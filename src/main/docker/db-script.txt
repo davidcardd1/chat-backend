@@ -1,0 +1,34 @@
+create table rooms
+(
+    id   varchar(255) not null
+        primary key,
+    name varchar(255)
+);
+
+create table users
+(
+    sessionid varchar(255) not null
+        primary key,
+    nickname  varchar(255),
+    online    boolean,
+    roomid    varchar(255)
+        constraint fk3io13gc38lc6sfb9wgnlybr2h
+            references rooms
+);
+
+create table messages
+(
+    id         bigserial
+        primary key,
+    body       varchar(255),
+    seen       boolean not null,
+    time_sent  timestamp(6),
+    receiverid varchar(255)
+        constraint fkainbx5m37u56rtp7obu6dbfvm
+            references users,
+    senderid   varchar(255)
+        constraint fkdqgg27nlpcggtmb095qpptigt
+            references users,
+    type       smallint
+);
+
