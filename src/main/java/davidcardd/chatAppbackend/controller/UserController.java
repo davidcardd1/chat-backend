@@ -2,6 +2,7 @@ package davidcardd.chatAppbackend.controller;
 
 import davidcardd.chatAppbackend.model.Room;
 import davidcardd.chatAppbackend.model.User;
+import davidcardd.chatAppbackend.service.MessageService;
 import davidcardd.chatAppbackend.service.RoomService;
 import davidcardd.chatAppbackend.service.UserService;
 import jakarta.validation.Valid;
@@ -17,6 +18,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
+@CrossOrigin
 public class UserController {
 
     @Autowired
@@ -24,6 +26,9 @@ public class UserController {
 
     @Autowired
     private RoomService roomService;
+
+    @Autowired
+    private MessageService messageService;
 
     @Autowired
     private SimpMessagingTemplate template;
@@ -34,7 +39,7 @@ public class UserController {
     }
 
     @GetMapping("/{roomID}/users")
-    public Map<String, Boolean> listRoomUsers(@PathVariable String roomID, @RequestParam String sessionID) {
+    public Map<String, String[]> listRoomUsers(@PathVariable String roomID, @RequestParam String sessionID) {
         Room room = roomService.findRoomById(roomID);
         if (room == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "room doesn't exist");
@@ -43,25 +48,28 @@ public class UserController {
             if ( user == null || !user.getRoom().getId().equals(roomID)) {
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "wrong user or room");
             } else {
-                Map<String, Boolean> userList = new HashMap<>();
+                Map<String, String[]> userList = new HashMap<>();
                 for (User u : room.getRoomUsers()) {
                     if (u.getSessionID() != user.getSessionID()) {
-                        userList.put(u.getNickname(), u.getOnline());
+                        int count = messageService.countAllUnseen(u, user);
+                        String[] a = {u.getOnline().toString(), String.valueOf(count)};
+                        userList.put(u.getNickname(), a);
                     }
                 }
+                System.out.println("HEREEEEE: " + userList);
                 return userList;
             }
         }
     }
 
     @PutMapping("/status")
-    public String updateStatus(@Valid @RequestBody User auth, @Valid @RequestParam boolean status) {
-        User user = userService.findUserBySessionID(auth.getSessionID());
+    public User updateStatus(@Valid @RequestParam String auth, @Valid @RequestParam boolean status) {
+        User user = userService.findUserBySessionID(auth);
         if (user == null ) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "wrong user");
         } else {
             user.setOnline(status);
-            return userService.save(user).toString();
+            return userService.save(user);
         }
     }
 

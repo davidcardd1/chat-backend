@@ -30,6 +30,10 @@ public class MessageService {
         return messageRepository.findAllBySenderInAndReceiverIn(users, users);
     };
 
+    public Integer countAllUnseen(User sender, User receiver) {
+        return messageRepository.countAllBySenderAndReceiverAndSeen(sender, receiver, false);
+    }
+
     public Message sendMessage(User sender, User receiver, String body) {
         if (sender.getRoom().getId().equals(receiver.getRoom().getId())) {
             Message message = new Message();

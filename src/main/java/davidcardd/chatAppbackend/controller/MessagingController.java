@@ -32,17 +32,6 @@ public class MessagingController {
     @Autowired
     private SimpMessagingTemplate template;
 
-    @PostMapping("/messages/send/{receiverName}")
-    public Message sendMessage(@Valid @RequestBody User sender, @Valid @PathVariable String receiverName, @Valid @RequestParam String body) {
-        User send = userService.findUserBySessionID(sender.getSessionID());
-        User receiver = userService.findUserByNicknameAndRoom(receiverName, send.getRoom());
-
-        if (body != null && !body.isBlank()) {
-            return messageService.sendMessage(send, receiver, body);
-        }
-        return null;
-    }
-
     @GetMapping("/messages/{userName}")
     public List<Message> getMessages(@Valid @RequestParam String sessionID, @PathVariable("userName") String userName) {
         User receiver = userService.findUserBySessionID(sessionID);
@@ -50,12 +39,30 @@ public class MessagingController {
         if (receiver == null) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "no auth");}
         User sender = userService.findUserByNicknameAndRoom(userName, receiver.getRoom());
         if (receiver == null) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "other user incorrect");}
+        List<Message> list = messageService.findAllBySenderAndReceiver(receiver, sender);
+        for (Message msg : list) {
+            if (msg.getReceiver().equals(receiver)) {
+                msg.setSeen(true);
+                messageService.save(msg);
+            }
+        }
         return messageService.findAllBySenderAndReceiver(receiver, sender);
+    }
+
+    @GetMapping("/unread/{userName}")
+    public Integer getUnread(@Valid @RequestParam String sessionID, @PathVariable("userName") String userName) {
+        User receiver = userService.findUserBySessionID(sessionID);
+
+        if (receiver == null) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "no auth");}
+        User sender = userService.findUserByNicknameAndRoom(userName, receiver.getRoom());
+        if (receiver == null) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "other user incorrect");}
+        List<Message> list = messageService.findAllBySenderAndReceiver(receiver, sender);
+        return messageService.countAllUnseen(sender, receiver);
     }
 
     @MessageMapping("/status")
     @SendTo("/chatroom/public")
-    public Message sendPublic(@Payload Message msg) {
+    public String sendPublic(@Payload String msg) {
         return msg;
     }
 
@@ -77,18 +84,6 @@ public class MessagingController {
         } else {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "missing valid sender, receiver or non-empty body");
         }
-    }
-
-
-
-    public Message sendMsg(String body, String receiverName, User auth) throws Exception {
-        User sender = userService.findUserBySessionID(auth.getSessionID());
-        User receiver = userService.findUserByNicknameAndRoom(receiverName, sender.getRoom());
-
-        if (body != null && !body.isBlank()) {
-            return messageService.sendMessage(sender, receiver, body);
-        }
-        return null;
     }
 
 
